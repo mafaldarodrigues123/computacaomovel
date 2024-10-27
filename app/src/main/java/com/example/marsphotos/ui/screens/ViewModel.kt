@@ -26,6 +26,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.marsphotos.MarsPhotosApplication
+import com.example.marsphotos.data.Firebase
 import com.example.marsphotos.data.MarsPhotosRepository
 import com.example.marsphotos.data.PicsumPhotosRepository
 import com.example.marsphotos.model.MarsPhoto
@@ -122,6 +123,30 @@ class ViewModel(private val marsPhotosRepository: MarsPhotosRepository,
                 randomPhoto = grayPhoto
             )
         }
+    }
+
+    fun saveImage() {
+        if (picsumUiState is PicsumUiState.Success && marsUiState is MarsUiState.Success) {
+            val currentPicsum = (picsumUiState as PicsumUiState.Success).randomPhoto
+            val currentMars = (marsUiState as MarsUiState.Success).randomPhoto
+            Firebase().save(currentMars, currentPicsum)
+        }
+    }
+
+    fun loadImage() {
+        Firebase().read{ mars, picsum ->
+            if(picsum != null)
+                picsumUiState = PicsumUiState.Success(
+                    phrase = (picsumUiState as PicsumUiState.Success).phrase,
+                    randomPhoto = picsum
+                )
+            if(mars!= null)
+                marsUiState = MarsUiState.Success(
+                phrase = (marsUiState as MarsUiState.Success).phrase,
+                randomPhoto = mars
+            )
+        }
+
     }
 
     /**

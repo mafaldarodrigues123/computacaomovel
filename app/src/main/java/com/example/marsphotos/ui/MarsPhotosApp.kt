@@ -61,6 +61,8 @@ fun MarsPhotosApp() {
                 },
                 onBlurClick = marsViewModel::applyBlur,
                 onGrayClick = marsViewModel::applyGray,
+                onLoadClick = marsViewModel::loadImage,
+                onSaveClick = marsViewModel::saveImage
             )
         }
     }

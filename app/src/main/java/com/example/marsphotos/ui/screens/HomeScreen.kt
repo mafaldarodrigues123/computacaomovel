@@ -41,6 +41,8 @@ import com.example.marsphotos.R
 import com.example.marsphotos.model.MarsPhoto
 import com.example.marsphotos.model.PicsumPhoto
 import com.example.marsphotos.ui.theme.MarsPhotosTheme
+import com.google.firebase.Firebase
+import com.google.firebase.firestore.firestore
 
 @Composable
 fun HomeScreen(
@@ -53,7 +55,10 @@ fun HomeScreen(
     onRollClick: () -> Unit,
     onBlurClick: () -> Unit,
     onGrayClick: () -> Unit,
+    onLoadClick: () -> Unit,
+    onSaveClick: () -> Unit,
 ) {
+
     Column {
         when {
             marsUiState is MarsUiState.Loading || picsumUiState is PicsumUiState.Loading -> {
@@ -86,6 +91,12 @@ fun HomeScreen(
             }
             Button(onClick = onGrayClick) {
                 Text("Gray")
+            }
+            Button(onClick = onLoadClick) {
+                Text("Load")
+            }
+            Button(onClick = onSaveClick) {
+                Text("Save")
             }
         }
     }

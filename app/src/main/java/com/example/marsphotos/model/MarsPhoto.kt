@@ -18,6 +18,8 @@ package com.example.marsphotos.model
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 /**
  * This data class defines a Mars photo which includes an ID, and the image URL.
@@ -27,4 +29,14 @@ data class MarsPhoto(
     val id: String,
     @SerialName(value = "img_src")
     val imgSrc: String
-)
+){
+    companion object{
+        override fun toString(): String {
+            return Json.encodeToString(this)
+        }
+
+        fun decodeFromString(str: String): MarsPhoto{
+            return Json.decodeFromString(str)
+        }
+    }
+}
