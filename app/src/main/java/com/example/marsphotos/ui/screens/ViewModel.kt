@@ -15,7 +15,6 @@
  */
 package com.example.marsphotos.ui.screens
 
-import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -50,14 +49,18 @@ sealed interface PicsumUiState {
     object Loading : PicsumUiState
 }
 
+
 class ViewModel(private val marsPhotosRepository: MarsPhotosRepository,
-                private val picsumPhotosRepository: PicsumPhotosRepository
+                private val picsumPhotosRepository: PicsumPhotosRepository,
 ) : ViewModel() {
     /** The mutable State that stores the status of the most recent request */
     var marsUiState: MarsUiState by mutableStateOf(MarsUiState.Loading)
         private set
 
     var picsumUiState: PicsumUiState by mutableStateOf(PicsumUiState.Loading)
+        private set
+
+    var rollCountState: Int by mutableStateOf(0)
         private set
 
     /**
@@ -103,6 +106,14 @@ class ViewModel(private val marsPhotosRepository: MarsPhotosRepository,
         }
     }
 
+    fun roll(){
+        getMarsPhotos()
+        getPicsumPhotos()
+        Firebase().incrementRollCount {
+             rollCountState = it
+        }
+    }
+
     fun applyBlur() {
         if (picsumUiState is PicsumUiState.Success) {
             val currentPhoto = (picsumUiState as PicsumUiState.Success).randomPhoto
@@ -129,12 +140,12 @@ class ViewModel(private val marsPhotosRepository: MarsPhotosRepository,
         if (picsumUiState is PicsumUiState.Success && marsUiState is MarsUiState.Success) {
             val currentPicsum = (picsumUiState as PicsumUiState.Success).randomPhoto
             val currentMars = (marsUiState as MarsUiState.Success).randomPhoto
-            Firebase().save(currentMars, currentPicsum)
+            Firebase().savePic(currentMars, currentPicsum)
         }
     }
 
     fun loadImage() {
-        Firebase().read{ mars, picsum ->
+        Firebase().readPic{ mars, picsum ->
             if(picsum != null)
                 picsumUiState = PicsumUiState.Success(
                     phrase = (picsumUiState as PicsumUiState.Success).phrase,
@@ -158,7 +169,10 @@ class ViewModel(private val marsPhotosRepository: MarsPhotosRepository,
                 val application = (this[APPLICATION_KEY] as MarsPhotosApplication)
                 val marsPhotosRepository = application.container.marsPhotosRepository
                 val picsumPhotosRepository = application.container.picsumPhotoRepository
-                ViewModel(marsPhotosRepository = marsPhotosRepository, picsumPhotosRepository = picsumPhotosRepository)
+                ViewModel(
+                    marsPhotosRepository = marsPhotosRepository,
+                    picsumPhotosRepository = picsumPhotosRepository,
+                )
             }
         }
     }

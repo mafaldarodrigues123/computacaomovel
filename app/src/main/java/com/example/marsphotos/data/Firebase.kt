@@ -14,7 +14,20 @@ class Firebase() {
 
     private val firebase = Firebase.firestore
 
-    fun save(marsPhoto: MarsPhoto, picsumPhoto: PicsumPhoto) {
+    private val rollCountRef = firebase.collection("roll_count").document("roll_count")
+
+    init {
+        val initialCount = hashMapOf("count" to 1)
+        rollCountRef.set(initialCount)
+            .addOnSuccessListener {
+                Log.d(TAG, "Document created with count = 1")
+            }
+            .addOnFailureListener { e ->
+                Log.w(TAG, "Error creating document", e)
+            }
+    }
+
+    fun savePic(marsPhoto: MarsPhoto, picsumPhoto: PicsumPhoto) {
         val images = hashMapOf(
             "mars" to Json.encodeToString(marsPhoto),
             "picsum" to Json.encodeToString(picsumPhoto)
@@ -30,7 +43,31 @@ class Firebase() {
         }
     }
 
-    fun read(callback: (MarsPhoto?, PicsumPhoto?) -> Unit) {
+    fun incrementRollCount(callback: (Int) -> Unit) {
+        val rollCountRef = firebase.collection("roll_count").document("roll_count")
+
+        rollCountRef.get()
+            .addOnSuccessListener { document ->
+                val currentCount = document.getLong("count") ?: 0
+                val newCount = currentCount + 1
+
+                rollCountRef.update("count", newCount)
+                    .addOnSuccessListener {
+                        Log.d(TAG, "Count incremented to $newCount")
+                        callback(newCount.toInt())
+                    }
+                    .addOnFailureListener { e ->
+                        Log.w(TAG, "Error updating document", e)
+                    }
+            }
+            .addOnFailureListener { exception ->
+                Log.w(TAG, "Error getting documents.", exception)
+            }
+    }
+
+
+
+    fun readPic(callback: (MarsPhoto?, PicsumPhoto?) -> Unit) {
         firebase.collection("saved_images")
             .get()
             .addOnSuccessListener { result ->

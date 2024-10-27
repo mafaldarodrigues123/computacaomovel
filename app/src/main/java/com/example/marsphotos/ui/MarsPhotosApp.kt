@@ -55,10 +55,8 @@ fun MarsPhotosApp() {
                 retryActionPicsum = marsViewModel::getPicsumPhotos,
                 picsumUiState = marsViewModel.picsumUiState,
                 contentPadding = it,
-                onRollClick = {
-                    marsViewModel.getMarsPhotos()
-                    marsViewModel.getPicsumPhotos()
-                },
+                rollCount = marsViewModel.rollCountState,
+                onRollClick = marsViewModel::roll,
                 onBlurClick = marsViewModel::applyBlur,
                 onGrayClick = marsViewModel::applyGray,
                 onLoadClick = marsViewModel::loadImage,

@@ -48,6 +48,7 @@ import com.google.firebase.firestore.firestore
 fun HomeScreen(
     marsUiState: MarsUiState,
     picsumUiState: PicsumUiState?,
+    rollCount: Int,
     retryActionMars: () -> Unit,
     retryActionPicsum: () -> Unit,
     modifier: Modifier = Modifier,
@@ -82,6 +83,7 @@ fun HomeScreen(
                 )
             }
         }
+        Text("roll done $rollCount times")
         Row {
             Button(onClick = onRollClick) {
                 Text("Roll")
