@@ -19,14 +19,15 @@ class Firebase() {
             "mars" to Json.encodeToString(marsPhoto),
             "picsum" to Json.encodeToString(picsumPhoto)
         )
-        //firebase.collection("images").document().delete()
-        firebase.collection("saved_images").add(images)
-            .addOnSuccessListener { documentReference ->
-                Log.d(TAG, "DocumentSnapshot added with ID: ${documentReference.id}")
-            }
-            .addOnFailureListener { e ->
-                Log.w(TAG, "Error adding document", e)
-            }
+        clear("saved_images"){
+            firebase.collection("saved_images").add(images)
+                .addOnSuccessListener { documentReference ->
+                    Log.d(TAG, "DocumentSnapshot added with ID: ${documentReference.id}")
+                }
+                .addOnFailureListener { e ->
+                    Log.w(TAG, "Error adding document", e)
+                }
+        }
     }
 
     fun read(callback: (MarsPhoto?, PicsumPhoto?) -> Unit) {
@@ -40,6 +41,27 @@ class Firebase() {
             }
             .addOnFailureListener { exception ->
                 Log.w(TAG, "Error getting documents.", exception)
+            }
+    }
+
+    private fun clear(path: String, onComplete: () -> Unit) {
+        val collectionRef = firebase.collection(path)
+        collectionRef.get()
+            .addOnSuccessListener { documents ->
+                for (document in documents) {
+                    collectionRef.document(document.id).delete()
+                        .addOnSuccessListener {
+                            Log.d(TAG, "Document ${document.id} successfully deleted.")
+                        }
+                        .addOnFailureListener { e ->
+                            Log.w(TAG, "Error deleting document ${document.id}", e)
+                        }
+                }
+                onComplete()
+            }
+            .addOnFailureListener { exception ->
+                Log.w(TAG, "Error getting documents.", exception)
+                onComplete() // Call onComplete even if there was an error
             }
     }
 }

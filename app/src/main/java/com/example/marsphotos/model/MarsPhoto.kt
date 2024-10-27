@@ -29,14 +29,4 @@ data class MarsPhoto(
     val id: String,
     @SerialName(value = "img_src")
     val imgSrc: String
-){
-    companion object{
-        override fun toString(): String {
-            return Json.encodeToString(this)
-        }
-
-        fun decodeFromString(str: String): MarsPhoto{
-            return Json.decodeFromString(str)
-        }
-    }
-}
+)
