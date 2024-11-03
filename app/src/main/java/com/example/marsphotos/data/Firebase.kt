@@ -4,74 +4,82 @@ import android.util.Log
 import com.example.marsphotos.model.MarsPhoto
 import com.example.marsphotos.model.PicsumPhoto
 import com.google.firebase.Firebase
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.firestore
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
-const val TAG = "Firebase"
+const val TAG = "FirebaseStore"
 
-class Firebase() {
+const val COLLECTION = "saved_images"
 
+const val APP_PICTURES_DOCUMENT = "latest_pictures"
+const val ROLL_COUNT_DOCUMENT = "roll_count"
+const val CAMERA_PICTURE_DOCUMENT = "camera_photo"
+
+class Firebase {
     private val firebase = Firebase.firestore
 
-    private val rollCountRef = firebase.collection("roll_count").document("roll_count")
-
-    init {
-        val initialCount = hashMapOf("count" to 1)
-        rollCountRef.set(initialCount)
-            .addOnSuccessListener {
-                Log.d(TAG, "Document created with count = 1")
-            }
-            .addOnFailureListener { e ->
-                Log.w(TAG, "Error creating document", e)
-            }
-    }
-
-    fun savePic(marsPhoto: MarsPhoto, picsumPhoto: PicsumPhoto) {
-        val images = hashMapOf(
+    fun saveAppPictures(marsPhoto: MarsPhoto, picsumPhoto: PicsumPhoto) {
+        val map = hashMapOf(
             "mars" to Json.encodeToString(marsPhoto),
             "picsum" to Json.encodeToString(picsumPhoto)
         )
-        clear("saved_images"){
-            firebase.collection("saved_images").add(images)
-                .addOnSuccessListener { documentReference ->
-                    Log.d(TAG, "DocumentSnapshot added with ID: ${documentReference.id}")
-                }
-                .addOnFailureListener { e ->
-                    Log.w(TAG, "Error adding document", e)
-                }
-        }
+        save(APP_PICTURES_DOCUMENT, map)
+    }
+
+    fun saveCameraPic(cameraPic: String) {
+        val map = hashMapOf(
+            "camera_pic" to cameraPic,
+        )
+        save(CAMERA_PICTURE_DOCUMENT, map)
     }
 
     fun incrementRollCount(callback: (Int) -> Unit) {
-        val rollCountRef = firebase.collection("roll_count").document("roll_count")
-
-        rollCountRef.get()
+        val documentRef = firebase.collection(COLLECTION).document(ROLL_COUNT_DOCUMENT)
+        documentRef.get()
             .addOnSuccessListener { document ->
-                val currentCount = document.getLong("count") ?: 0
-                val newCount = currentCount + 1
-
-                rollCountRef.update("count", newCount)
-                    .addOnSuccessListener {
-                        Log.d(TAG, "Count incremented to $newCount")
-                        callback(newCount.toInt())
-                    }
-                    .addOnFailureListener { e ->
-                        Log.w(TAG, "Error updating document", e)
-                    }
+                if (document.exists() && document.contains(ROLL_COUNT_DOCUMENT)) {
+                    documentRef.update(ROLL_COUNT_DOCUMENT, FieldValue.increment(1))
+                        .addOnSuccessListener {
+                            documentRef.get()
+                                .addOnSuccessListener { updatedDocument ->
+                                    val newCount = updatedDocument.getLong(ROLL_COUNT_DOCUMENT) ?: 0
+                                    Log.d(TAG, "Roll count incremented to $newCount.")
+                                    callback(newCount.toInt())
+                                }
+                                .addOnFailureListener { e ->
+                                    Log.w(TAG, "Error getting updated roll count", e)
+                                    callback(-1)
+                                }
+                        }
+                        .addOnFailureListener { e ->
+                            Log.w(TAG, "Error incrementing roll count", e)
+                            callback(-1)
+                        }
+                } else {
+                    documentRef.set(mapOf("roll_count" to 1))
+                        .addOnSuccessListener {
+                            Log.d(TAG, "Roll count initialized to 1.")
+                            callback(1)
+                        }
+                        .addOnFailureListener { e ->
+                            Log.w(TAG, "Error initializing roll count", e)
+                            callback(-1)
+                        }
+                }
             }
-            .addOnFailureListener { exception ->
-                Log.w(TAG, "Error getting documents.", exception)
+            .addOnFailureListener { e ->
+                Log.w(TAG, "Error checking roll count document", e)
+                callback(-1)
             }
     }
 
-
-
-    fun readPic(callback: (MarsPhoto?, PicsumPhoto?) -> Unit) {
-        firebase.collection("saved_images")
+    fun readPics(callback: (MarsPhoto?, PicsumPhoto?) -> Unit) {
+        firebase.collection(COLLECTION).document(APP_PICTURES_DOCUMENT)
             .get()
             .addOnSuccessListener { result ->
-                val images = result.last().data as Map<String, String>
+                val images = result.data as Map<String, String>
                 val marsPhoto = images["mars"]?.let { Json.decodeFromString<MarsPhoto>(it) }
                 val picsumPhoto = images["picsum"]?.let { Json.decodeFromString<PicsumPhoto>(it) }
                 callback(marsPhoto, picsumPhoto)
@@ -81,24 +89,13 @@ class Firebase() {
             }
     }
 
-    private fun clear(path: String, onComplete: () -> Unit) {
-        val collectionRef = firebase.collection(path)
-        collectionRef.get()
-            .addOnSuccessListener { documents ->
-                for (document in documents) {
-                    collectionRef.document(document.id).delete()
-                        .addOnSuccessListener {
-                            Log.d(TAG, "Document ${document.id} successfully deleted.")
-                        }
-                        .addOnFailureListener { e ->
-                            Log.w(TAG, "Error deleting document ${document.id}", e)
-                        }
-                }
-                onComplete()
+    private fun save(document: String, map: HashMap<*, *>){
+        firebase.collection(COLLECTION).document(document).set(map)
+            .addOnSuccessListener { documentReference ->
+                Log.d(TAG, "DocumentSnapshot added with ID: $documentReference")
             }
-            .addOnFailureListener { exception ->
-                Log.w(TAG, "Error getting documents.", exception)
-                onComplete() // Call onComplete even if there was an error
+            .addOnFailureListener { e ->
+                Log.w(TAG, "Error adding document", e)
             }
     }
 }

@@ -15,7 +15,7 @@
 */
 
 plugins {
-    id("kotlin-android")
+    id("com.google.devtools.ksp") version "1.9.20-1.0.14"
     id("com.google.gms.google-services")
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -69,6 +69,18 @@ android {
 }
 
 dependencies {
+
+    //Room
+    implementation("androidx.room:room-runtime:2.6.0")
+    ksp("androidx.room:room-compiler:2.6.0")
+    implementation("androidx.room:room-ktx:2.6.0")
+
+    implementation ("androidx.room:room-ktx:2.6.0")
+    implementation ("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.5.2") // Add Coroutine dependency
+
+    implementation("io.coil-kt.coil3:coil-compose:3.0.0-rc02")
+    implementation("io.coil-kt.coil3:coil-network-okhttp:3.0.0-rc02")
+
 
     // Google Sign In SDK
     implementation("com.google.android.gms:play-services-auth:20.5.0")

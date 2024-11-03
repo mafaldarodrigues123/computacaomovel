@@ -140,12 +140,16 @@ class ViewModel(private val marsPhotosRepository: MarsPhotosRepository,
         if (picsumUiState is PicsumUiState.Success && marsUiState is MarsUiState.Success) {
             val currentPicsum = (picsumUiState as PicsumUiState.Success).randomPhoto
             val currentMars = (marsUiState as MarsUiState.Success).randomPhoto
-            Firebase().savePic(currentMars, currentPicsum)
+            Firebase().saveAppPictures(currentMars, currentPicsum)
         }
     }
 
+    fun saveCameraPic(image: String){
+        Firebase().saveCameraPic(image)
+    }
+
     fun loadImage() {
-        Firebase().readPic{ mars, picsum ->
+        Firebase().readPics{ mars, picsum ->
             if(picsum != null)
                 picsumUiState = PicsumUiState.Success(
                     phrase = (picsumUiState as PicsumUiState.Success).phrase,

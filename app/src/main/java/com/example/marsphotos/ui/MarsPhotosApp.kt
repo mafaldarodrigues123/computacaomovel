@@ -18,6 +18,8 @@
 
 package com.example.marsphotos.ui
 
+import android.annotation.SuppressLint
+import android.content.Context
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -35,6 +37,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.marsphotos.R
 import com.example.marsphotos.ui.screens.HomeScreen
 import com.example.marsphotos.ui.screens.ViewModel
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,7 +65,8 @@ fun MarsPhotosApp() {
                 onBlurClick = marsViewModel::applyBlur,
                 onGrayClick = marsViewModel::applyGray,
                 onLoadClick = marsViewModel::loadImage,
-                onSaveClick = marsViewModel::saveImage
+                onSaveClick = marsViewModel::saveImage,
+                onSaveCameraPic = marsViewModel::saveCameraPic
             )
         }
     }
@@ -79,3 +85,16 @@ fun MarsTopAppBar(scrollBehavior: TopAppBarScrollBehavior, modifier: Modifier = 
         modifier = modifier
     )
 }
+
+@SuppressLint("SimpleDateFormat")
+fun Context.createImageFile(): File {
+    val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss").format(Date())
+    val imageFileName = "JPEG_" + timeStamp + "_"
+    val image = File.createTempFile(
+        imageFileName,
+        ".jpg",
+        externalCacheDir
+    )
+    return image
+}
+

@@ -15,34 +15,57 @@
  */
 package com.example.marsphotos.ui.screens
 
+import android.content.Context
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.util.Log
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
+import androidx.room.Room
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.marsphotos.R
+import com.example.marsphotos.data.room.AppDatabase
+import com.example.marsphotos.data.room.ImageEntity
 import com.example.marsphotos.model.MarsPhoto
 import com.example.marsphotos.model.PicsumPhoto
+import com.example.marsphotos.ui.createImageFile
 import com.example.marsphotos.ui.theme.MarsPhotosTheme
-import com.google.firebase.Firebase
-import com.google.firebase.firestore.firestore
+import kotlinx.coroutines.launch
+import java.util.Objects
 
 @Composable
 fun HomeScreen(
@@ -58,51 +81,123 @@ fun HomeScreen(
     onGrayClick: () -> Unit,
     onLoadClick: () -> Unit,
     onSaveClick: () -> Unit,
+    onSaveCameraPic: (String) -> Unit,
 ) {
+    val context = LocalContext.current
+    val database = remember { getDatabase(context) }
+    val imageDao = remember { database.imageDao() }
+    val scope = rememberCoroutineScope()
+    val file = context.createImageFile()
+    val uri = FileProvider.getUriForFile(
+        Objects.requireNonNull(context),
+        context.packageName + ".provider", file
+    )
+    var capturedImageUri by remember {
+        mutableStateOf<Uri>(Uri.EMPTY)
+    }
+    val cameraLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) {
+            capturedImageUri = uri
+            scope.launch {
+                imageDao.insertImage(ImageEntity(uri = capturedImageUri.toString()))
+                onSaveCameraPic(capturedImageUri.toString())
+            }
+        }
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) {
+        cameraLauncher.launch(uri)
+    }
 
-    Column {
-        when {
-            marsUiState is MarsUiState.Loading || picsumUiState is PicsumUiState.Loading -> {
-                LoadingScreen(modifier = modifier.fillMaxSize())
+    Column(modifier = modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+                .clipToBounds()
+        ) {
+            when {
+                marsUiState is MarsUiState.Loading || picsumUiState is PicsumUiState.Loading -> {
+                    LoadingScreen(modifier = modifier.fillMaxSize())
+                }
+                marsUiState is MarsUiState.Error -> {
+                    ErrorScreen(retryAction = retryActionMars, modifier = modifier.fillMaxSize())
+                }
+                picsumUiState is PicsumUiState.Error -> {
+                    ErrorScreen(retryAction = retryActionPicsum, modifier = modifier.fillMaxSize())
+                }
+                marsUiState is MarsUiState.Success && picsumUiState is PicsumUiState.Success -> {
+                    ResultScreen(
+                        marsString = marsUiState.phrase,
+                        picsumString = picsumUiState.phrase,
+                        marsPhoto = marsUiState.randomPhoto,
+                        picsumPhoto = picsumUiState.randomPhoto,
+                        modifier = modifier
+                            .fillMaxWidth()
+                            .padding(contentPadding)
+                    )
+                }
             }
-            marsUiState is MarsUiState.Error -> {
-                ErrorScreen(retryAction = retryActionMars, modifier = modifier.fillMaxSize())
+
+            var image by remember { mutableStateOf<ImageEntity?>(null) }
+            LaunchedEffect(capturedImageUri) {
+                image = imageDao.getImage()
+                Log.d("Database Load", "Loaded Image URI: ${image?.uri}")
             }
-            picsumUiState is PicsumUiState.Error -> {
-                ErrorScreen(retryAction = retryActionPicsum, modifier = modifier.fillMaxSize())
-            }
-            marsUiState is MarsUiState.Success && picsumUiState is PicsumUiState.Success -> {
-                ResultScreen(
-                    marsString = marsUiState.phrase,
-                    picsumString = picsumUiState.phrase,
-                    marsPhoto = marsUiState.randomPhoto,
-                    picsumPhoto = picsumUiState.randomPhoto,
-                    modifier = modifier
-                        .fillMaxWidth()
-                        .padding(contentPadding)
+
+            Text("roll done $rollCount times", modifier = Modifier.padding(8.dp))
+
+            image?.let {
+                AsyncImage(
+                    model = Uri.parse(it.uri),
+                    contentDescription = "Saved Image",
+                    modifier = Modifier.size(100.dp).clipToBounds()
                 )
             }
         }
-        Text("roll done $rollCount times")
-        Row {
-            Button(onClick = onRollClick) {
-                Text("Roll")
+
+
+
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Button(onClick = onRollClick) { Text("Roll") }
+                Button(onClick = onBlurClick) { Text("Blur") }
+                Button(onClick = onGrayClick) { Text("Gray") }
+                Button(onClick = onLoadClick) { Text("Load") }
+                Button(onClick = onSaveClick) { Text("Save") }
             }
-            Button(onClick = onBlurClick) {
-                Text("Blur")
-            }
-            Button(onClick = onGrayClick) {
-                Text("Gray")
-            }
-            Button(onClick = onLoadClick) {
-                Text("Load")
-            }
-            Button(onClick = onSaveClick) {
-                Text("Save")
+
+            Button(onClick = {
+                val permissionCheckResult =
+                    ContextCompat.checkSelfPermission(context, android.Manifest.permission.CAMERA)
+                if (permissionCheckResult == PackageManager.PERMISSION_GRANTED) {
+                    cameraLauncher.launch(uri)
+                } else {
+                    permissionLauncher.launch(android.Manifest.permission.CAMERA)
+                }
+            }) {
+                Text(text = "Take Photo")
             }
         }
     }
+}
 
+fun getDatabase(context: Context): AppDatabase {
+    return Room.databaseBuilder(
+        context.applicationContext,
+        AppDatabase::class.java, "image_database"
+    ).build()
 }
 
 /**
